@@ -7,22 +7,19 @@ const MessageSchema = new mongoose.Schema({
 
 const DraftSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
-
-  // Full OpenAI conversation history
   messages: [MessageSchema],
-
-  // Last question shown to user (for display on resume)
   lastQuestion:  { type: String, default: '' },
   lastOptions:   { type: [String], default: [] },
-
-  // Completed diagnosis
   completed:  { type: Boolean, default: false },
   diagnosis:  { type: String, default: '' },
-
-  // Progress tracking (estimated 0–100)
   progress: { type: Number, default: 0 },
+  adminNotes:      { type: String, default: '' },
+  adminStatus:     { type: String, enum: ['pendente', 'em_analise', 'proposta_enviada', 'concluido'], default: 'pendente' },
+  adminReviewedAt: { type: Date },
 }, { timestamps: true });
 
-DraftSchema.index({ userId: 1 });
+// ⚠️ userId já tem index pelo unique:true acima — não repetir aqui
+DraftSchema.index({ adminStatus: 1 });
+DraftSchema.index({ completed: 1, updatedAt: -1 });
 
 export default mongoose.models.Draft || mongoose.model('Draft', DraftSchema);
