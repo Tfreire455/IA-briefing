@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import CircuitBg from '../components/CircuitBg';
 import { withAuthSSR } from '../lib/auth';
 
-// ── Typing animation ──────────────────────────────────────────────────────────
+// ── Typing animation ───────────────────────────────────────────────────────
 function TypingText({ text, onDone, speed = 18 }) {
   const [displayed, setDisplayed] = useState('');
   const [done, setDone] = useState(false);
@@ -18,11 +18,7 @@ function TypingText({ text, onDone, speed = 18 }) {
     const iv = setInterval(() => {
       idx.current++;
       setDisplayed(text.slice(0, idx.current));
-      if (idx.current >= text.length) {
-        clearInterval(iv);
-        setDone(true);
-        onDone?.();
-      }
+      if (idx.current >= text.length) { clearInterval(iv); setDone(true); onDone?.(); }
     }, speed);
     return () => clearInterval(iv);
   }, [text]);
@@ -30,104 +26,85 @@ function TypingText({ text, onDone, speed = 18 }) {
   return (
     <span>
       {displayed}
-      {!done && <span style={{ animation: '_blink 0.8s step-end infinite', color: 'var(--cyan)' }}>▌</span>}
+      {!done && <span style={{ animation:'_blink 0.8s step-end infinite', color:'var(--cyan)' }}>▌</span>}
     </span>
   );
 }
 
-// ── Progress ring ─────────────────────────────────────────────────────────────
-function ProgressRing({ pct = 0 }) {
-  const r = 22, c = 2 * Math.PI * r;
+// ── Progress ring ──────────────────────────────────────────────────────────
+function ProgressRing({ pct = 0, size = 48 }) {
+  const r = size/2 - 4, c = 2 * Math.PI * r;
   const dash = c - (pct / 100) * c;
   return (
-    <svg width="58" height="58" viewBox="0 0 58 58">
-      <circle cx="29" cy="29" r={r} fill="none" stroke="rgba(14,165,233,0.12)" strokeWidth="2.5"/>
-      <circle cx="29" cy="29" r={r} fill="none" stroke="url(#pg)" strokeWidth="2.5"
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ flexShrink:0 }}>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(14,165,233,0.12)" strokeWidth="2.5"/>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="url(#pg)" strokeWidth="2.5"
         strokeDasharray={c} strokeDashoffset={dash} strokeLinecap="round"
-        style={{ transform: 'rotate(-90deg)', transformOrigin: '50% 50%', transition: 'stroke-dashoffset 0.6s ease' }}/>
+        style={{ transform:'rotate(-90deg)', transformOrigin:'50% 50%', transition:'stroke-dashoffset 0.6s ease' }}/>
       <defs>
         <linearGradient id="pg" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#0EA5E9"/>
-          <stop offset="100%" stopColor="#06EEF5"/>
+          <stop offset="0%" stopColor="#0EA5E9"/><stop offset="100%" stopColor="#06EEF5"/>
         </linearGradient>
       </defs>
-      <text x="29" y="34" textAnchor="middle" fill="var(--cyan)" fontFamily="Orbitron" fontSize="11" fontWeight="700">
-        {pct}%
-      </text>
+      <text x={size/2} y={size/2+4} textAnchor="middle" fill="var(--cyan)" fontFamily="Orbitron" fontSize="9" fontWeight="700">{pct}%</text>
     </svg>
   );
 }
 
-// ── Diagnosis renderer ────────────────────────────────────────────────────────
+// ── Diagnosis view ─────────────────────────────────────────────────────────
 function DiagnosisView({ text, userName, onRestart }) {
+  const ICONS = { 'RESUMO':'◈','PRINCIPAIS':'⚠','OPORTUNIDADES':'◆','AUTOMAÇÕES':'⚙','ESTRATÉGIAS DE MARKETING':'◇','SISTEMAS':'⬡','CAPTAÇÃO':'◉','RECOMENDAÇÕES':'★' };
   const sections = [];
-  const lines = text.split('\n');
   let current = null;
-
-  const SECTION_ICONS = {
-    'RESUMO': '◈', 'PRINCIPAIS': '⚠', 'OPORTUNIDADES': '◆',
-    'AUTOMAÇÕES': '⚙', 'ESTRATÉGIAS DE MARKETING': '◇',
-    'SISTEMAS': '⬡', 'CAPTAÇÃO': '◉', 'RECOMENDAÇÕES': '★',
-  };
-
-  lines.forEach(line => {
-    const trimmed = line.trim();
-    if (!trimmed) return;
-    const isHeader = Object.keys(SECTION_ICONS).some(k => trimmed.toUpperCase().startsWith(k));
-    if (isHeader) {
+  text.split('\n').forEach(line => {
+    const t = line.trim(); if (!t) return;
+    const isH = Object.keys(ICONS).some(k => t.toUpperCase().startsWith(k));
+    if (isH) {
       if (current) sections.push(current);
-      const icon = Object.entries(SECTION_ICONS).find(([k]) => trimmed.toUpperCase().startsWith(k))?.[1] || '◈';
-      current = { title: trimmed, icon, items: [] };
-    } else if (current) {
-      current.items.push(trimmed);
-    }
+      const icon = Object.entries(ICONS).find(([k]) => t.toUpperCase().startsWith(k))?.[1] || '◈';
+      current = { title:t, icon, items:[] };
+    } else if (current) { current.items.push(t); }
   });
   if (current) sections.push(current);
-
-  // Fallback: no sections detected, show raw
-  if (!sections.length) {
-    sections.push({ title: 'DIAGNÓSTICO COMPLETO', icon: '◈', items: text.split('\n').filter(Boolean) });
-  }
+  if (!sections.length) sections.push({ title:'DIAGNÓSTICO', icon:'◈', items: text.split('\n').filter(Boolean) });
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ maxWidth: '860px', margin: '0 auto', padding: '36px 24px' }}>
+    <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} className="diag-wrap">
       {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 180, delay: 0.1 }}
-          style={{ width: '80px', height: '80px', border: '1px solid rgba(6,238,245,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', boxShadow: '0 0 32px rgba(6,238,245,0.25)' }}>
-          <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+      <div style={{ textAlign:'center', marginBottom:'clamp(24px,5vw,40px)' }}>
+        <motion.div initial={{ scale:0 }} animate={{ scale:1 }} transition={{ type:'spring', stiffness:180, delay:0.1 }}
+          className="diag-check-box">
+          <svg width="32" height="32" viewBox="0 0 36 36" fill="none">
             <path d="M7 18L15 26L29 11" stroke="#06EEF5" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </motion.div>
-        <p className="tag" style={{ justifyContent: 'center', marginBottom: '12px' }}>ANÁLISE COMPLETA</p>
-        <h2 className="font-orb" style={{ fontSize: 'clamp(1.6rem, 4vw, 2.8rem)', fontWeight: 700, marginBottom: '10px' }}>
+        <p className="tag" style={{ justifyContent:'center', marginBottom:'10px' }}>ANÁLISE COMPLETA</p>
+        <h2 className="font-orb" style={{ fontSize:'clamp(1.4rem,5vw,2.6rem)', fontWeight:700, marginBottom:'10px' }}>
           <span className="text-grad">SEU DIAGNÓSTICO</span>
         </h2>
-        <p className="font-exo" style={{ fontSize: '14px', color: 'var(--tmuted)', maxWidth: '440px', margin: '0 auto' }}>
-          Diagnóstico personalizado para <strong style={{ color: 'var(--tbright)' }}>{userName}</strong> — preparado pela TM Dev.
+        <p className="font-exo" style={{ fontSize:'clamp(12px,3vw,14px)', color:'var(--tmuted)', maxWidth:'400px', margin:'0 auto', lineHeight:1.7 }}>
+          Preparado pela <strong style={{ color:'var(--tbright)' }}>TM Dev</strong> para <strong style={{ color:'var(--tbright)' }}>{userName}</strong>
         </p>
-        <div className="cyber-line" style={{ marginTop: '22px' }} />
+        <div className="cyber-line" style={{ marginTop:'18px' }}/>
       </div>
 
-      {/* Sections */}
-      <div style={{ display: 'grid', gap: '16px' }}>
-        {sections.map((sec, i) => (
-          <motion.div key={i} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
-            className="panel" style={{ padding: '22px 26px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
-              <span style={{ fontSize: '20px', color: 'var(--cyan)', textShadow: '0 0 8px var(--cyan)', flexShrink: 0 }}>{sec.icon}</span>
-              <h3 className="font-orb" style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.14em', color: 'var(--tbright)' }}>{sec.title}</h3>
+      {/* Cards */}
+      <div className="diag-grid">
+        {sections.map((sec,i) => (
+          <motion.div key={i} initial={{ opacity:0, y:14 }} animate={{ opacity:1, y:0 }} transition={{ delay:i*0.07 }}
+            className="panel" style={{ padding:'clamp(14px,4vw,22px)' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'12px' }}>
+              <span style={{ fontSize:'clamp(16px,4vw,20px)', color:'var(--cyan)', textShadow:'0 0 8px var(--cyan)', flexShrink:0 }}>{sec.icon}</span>
+              <h3 className="font-orb" style={{ fontSize:'clamp(9px,2.5vw,11px)', fontWeight:700, letterSpacing:'0.12em', color:'var(--tbright)', lineHeight:1.3 }}>{sec.title}</h3>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
-              {sec.items.map((item, j) => {
-                const isBullet = item.startsWith('•') || item.startsWith('-') || item.startsWith('*');
-                const cleaned = item.replace(/^[•\-*]\s*/, '');
+            <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
+              {sec.items.map((item,j) => {
+                const isBullet = item.startsWith('•')||item.startsWith('-')||item.startsWith('*');
+                const cleaned = item.replace(/^[•\-*]\s*/,'');
                 return (
-                  <div key={j} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                    {isBullet && (
-                      <span style={{ width: '5px', height: '5px', background: 'var(--cyan)', flexShrink: 0, marginTop: '7px', clipPath: 'polygon(50% 0%,100% 50%,50% 100%,0% 50%)' }}/>
-                    )}
-                    <p className="font-exo" style={{ fontSize: '13px', color: isBullet ? 'var(--text)' : 'var(--tbright)', lineHeight: 1.65, fontWeight: isBullet ? 400 : 500 }}>{cleaned}</p>
+                  <div key={j} style={{ display:'flex', gap:'8px', alignItems:'flex-start' }}>
+                    {isBullet && <span style={{ width:'4px', height:'4px', background:'var(--cyan)', flexShrink:0, marginTop:'8px', clipPath:'polygon(50% 0%,100% 50%,50% 100%,0% 50%)' }}/>}
+                    <p className="font-exo" style={{ fontSize:'clamp(12px,3vw,13px)', color:isBullet?'var(--text)':'var(--tbright)', lineHeight:1.65, fontWeight:isBullet?400:500 }}>{cleaned}</p>
                   </div>
                 );
               })}
@@ -136,44 +113,34 @@ function DiagnosisView({ text, userName, onRestart }) {
         ))}
       </div>
 
-      {/* Actions */}
-      <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '36px', flexWrap: 'wrap' }}>
+      <div className="diag-actions">
         <button className="btn btn-ghost font-orb" onClick={onRestart}>↺ NOVO BRIEFING</button>
         {typeof window !== 'undefined' && (
-          <button className="btn btn-primary font-orb" onClick={() => window.print()}>
-            <span>↓ SALVAR PDF</span>
-          </button>
+          <button className="btn btn-primary font-orb" onClick={() => window.print()}><span>↓ SALVAR PDF</span></button>
         )}
       </div>
     </motion.div>
   );
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
+// ── Main ───────────────────────────────────────────────────────────────────
 export default function BriefingPage({ user }) {
   const router = useRouter();
-
-  // Phase: 'loading' | 'hero' | 'chat' | 'diagnosis'
-  const [phase, setPhase] = useState('loading');
+  const [phase, setPhase]               = useState('loading');
   const [existingDraft, setExistingDraft] = useState(null);
-
-  // Chat state
-  const [question, setQuestion]     = useState('');
-  const [options, setOptions]       = useState([]);
-  const [progress, setProgress]     = useState(0);
-  const [selected, setSelected]     = useState([]);
-  const [freeText, setFreeText]     = useState('');
-  const [sending, setSending]       = useState(false);
-  const [typingDone, setTypingDone] = useState(false);
-  const [error, setError]           = useState('');
-  const [diagnosis, setDiagnosis]   = useState('');
-
-  // History display (question, answer pairs)
-  const [history, setHistory] = useState([]);
-
+  const [question, setQuestion]         = useState('');
+  const [options, setOptions]           = useState([]);
+  const [progress, setProgress]         = useState(0);
+  const [selected, setSelected]         = useState([]);
+  const [freeText, setFreeText]         = useState('');
+  const [sending, setSending]           = useState(false);
+  const [typingDone, setTypingDone]     = useState(false);
+  const [error, setError]               = useState('');
+  const [diagnosis, setDiagnosis]       = useState('');
+  const [history, setHistory]           = useState([]);
   const textRef = useRef(null);
+  const bottomRef = useRef(null);
 
-  // ── Load existing draft on mount ───────────────────────────────────
   useEffect(() => {
     (async () => {
       try {
@@ -181,301 +148,253 @@ export default function BriefingPage({ user }) {
         const d = await r.json();
         if (d.draft && d.draft.messageCount > 0) {
           setExistingDraft(d.draft);
-          if (d.draft.completed) {
-            setDiagnosis(d.draft.diagnosis);
-            setPhase('diagnosis');
-          } else {
-            setPhase('hero');
-          }
-        } else {
-          setPhase('hero');
-        }
-      } catch {
-        setPhase('hero');
-      }
+          if (d.draft.completed) { setDiagnosis(d.draft.diagnosis); setPhase('diagnosis'); }
+          else { setPhase('hero'); }
+        } else { setPhase('hero'); }
+      } catch { setPhase('hero'); }
     })();
   }, []);
 
-  // ── Toggle option selection ────────────────────────────────────────
-  const toggleOpt = (opt) => {
-    setSelected(s => s.includes(opt) ? s.filter(x => x !== opt) : [...s, opt]);
-  };
+  // Scroll to bottom on new messages
+  useEffect(() => {
+    if (phase === 'chat') setTimeout(() => bottomRef.current?.scrollIntoView({ behavior:'smooth' }), 100);
+  }, [history, typingDone]);
 
-  // ── Send message to AI ─────────────────────────────────────────────
-  const sendMessage = useCallback(async ({ reset = false, isFirst = false } = {}) => {
-    const hasContent = selected.length > 0 || freeText.trim() || isFirst;
+  const toggleOpt = (opt) => setSelected(s => s.includes(opt) ? s.filter(x=>x!==opt) : [...s, opt]);
+
+  const sendMessage = useCallback(async ({ reset=false } = {}) => {
+    const hasContent = selected.length > 0 || freeText.trim();
     if (!hasContent || sending) return;
-
     setSending(true); setError(''); setTypingDone(false);
-
-    // Add user turn to history display
-    if (!isFirst) {
-      const userMsg = selected.length > 0
-        ? selected.join(', ') + (freeText.trim() ? ` — ${freeText.trim()}` : '')
-        : freeText.trim();
-      setHistory(h => [...h, { role: 'user', content: userMsg }]);
-    }
-
+    const userMsg = selected.length > 0
+      ? selected.join(', ') + (freeText.trim() ? ` — ${freeText.trim()}` : '')
+      : freeText.trim();
+    setHistory(h => [...h, { role:'user', content:userMsg }]);
     setSelected([]); setFreeText('');
-
     try {
-      const body = {
-        userMessage: freeText.trim(),
-        selectedOptions: selected,
-        reset,
-      };
       const r = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ userMessage:freeText.trim(), selectedOptions:selected, reset }),
       });
       if (r.status === 401) { router.push('/login'); return; }
       const data = await r.json();
       if (data.error) { setError(data.error); return; }
-
       if (data.type === 'diagnosis') {
-        setDiagnosis(data.diagnosis);
-        setProgress(100);
-        setPhase('diagnosis');
+        setDiagnosis(data.diagnosis); setProgress(100); setPhase('diagnosis');
       } else {
-        setQuestion(data.question || '');
-        setOptions(data.options || []);
-        setProgress(data.progress || 0);
-        setHistory(h => [...h, { role: 'assistant', content: data.question }]);
+        setQuestion(data.question||''); setOptions(data.options||[]); setProgress(data.progress||0);
+        setHistory(h => [...h, { role:'assistant', content:data.question }]);
         setTimeout(() => textRef.current?.focus(), 400);
       }
     } catch { setError('Erro de conexão. Tente novamente.'); }
     finally { setSending(false); }
   }, [selected, freeText, sending, router]);
 
-  // ── Start / resume chat ────────────────────────────────────────────
   const startChat = async (resume = false) => {
-    setPhase('chat'); setHistory([]); setProgress(0);
-    setQuestion(''); setOptions([]);
-    setSelected([]); setFreeText('');
-
-    setSending(true); setTypingDone(false); setError('');
+    setPhase('chat'); setHistory([]); setProgress(0); setQuestion(''); setOptions([]);
+    setSelected([]); setFreeText(''); setSending(true); setTypingDone(false); setError('');
     try {
       const r = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reset: !resume, userMessage: '', selectedOptions: [] }),
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ reset:!resume, userMessage:'', selectedOptions:[] }),
       });
       if (r.status === 401) { router.push('/login'); return; }
       const data = await r.json();
       if (data.error) { setError(data.error); return; }
-
       if (data.type === 'question') {
-        setQuestion(data.question || '');
-        setOptions(data.options || []);
-        setProgress(data.progress || 0);
-        setHistory([{ role: 'assistant', content: data.question }]);
+        setQuestion(data.question||''); setOptions(data.options||[]); setProgress(data.progress||0);
+        setHistory([{ role:'assistant', content:data.question }]);
       }
     } catch { setError('Erro de conexão.'); }
     finally { setSending(false); }
   };
 
   const handleRestart = async () => {
-    await fetch('/api/draft', { method: 'DELETE' });
-    setExistingDraft(null); setDiagnosis(''); setHistory([]);
-    setPhase('hero');
+    await fetch('/api/draft', { method:'DELETE' });
+    setExistingDraft(null); setDiagnosis(''); setHistory([]); setPhase('hero');
   };
 
   const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
+    await fetch('/api/auth/logout', { method:'POST' });
     router.push('/login');
   };
 
   const canSend = (selected.length > 0 || freeText.trim().length > 0) && !sending && typingDone;
+  const firstName = user.name.split(' ')[0].toUpperCase();
 
-  // ── Render ─────────────────────────────────────────────────────────
   return (
     <>
-      <Head><title>TM Dev — Briefing Inteligente</title></Head>
-      <div style={{ background: 'var(--bg)', minHeight: '100vh', position: 'relative' }}>
-        <CircuitBg opacity={0.3} />
-        <div className="fixed inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse 70% 50% at 50% 0%, rgba(14,165,233,0.07) 0%, transparent 70%)', zIndex: 0 }} />
+      <Head><title>TM Dev — Briefing IA</title></Head>
+      <div style={{ background:'var(--bg)', minHeight:'100vh', position:'relative' }}>
+        <CircuitBg opacity={0.25}/>
+        <div className="top-glow"/>
 
-        {/* ── Top nav ──────────────────────────────────────────────── */}
-        <header style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(4,12,24,0.92)', borderBottom: '1px solid var(--border)', backdropFilter: 'blur(14px)' }}>
-          <div style={{ maxWidth: '900px', margin: '0 auto', padding: '11px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ width: '32px', height: '32px', border: '1px solid rgba(6,238,245,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 10px rgba(6,238,245,0.12)' }}>
-                <span className="font-orb text-cglow" style={{ fontSize: '9px', fontWeight: 700 }}>TM</span>
+        {/* ── Header ── */}
+        <header className="site-header">
+          <div className="header-inner">
+            {/* Logo */}
+            <div style={{ display:'flex', alignItems:'center', gap:'8px', flexShrink:0 }}>
+              <div className="hlogo">
+                <span className="font-orb text-cglow" style={{ fontSize:'9px', fontWeight:700 }}>TM</span>
               </div>
-              <div>
-                <span className="font-orb" style={{ fontSize: '12px', fontWeight: 700, color: 'var(--tbright)', letterSpacing: '0.1em' }}>TM DEV</span>
-                <span className="font-mono" style={{ fontSize: '6px', color: 'var(--tmuted)', letterSpacing: '0.2em', display: 'block' }}>AI BRIEFING</span>
+              <div className="hlogo-text">
+                <span className="font-orb" style={{ fontSize:'clamp(10px,2.8vw,12px)', fontWeight:700, color:'var(--tbright)', letterSpacing:'0.1em', display:'block', lineHeight:1.2 }}>TM DEV</span>
+                <span className="font-mono" style={{ fontSize:'clamp(6px,1.5vw,7px)', color:'var(--tmuted)', letterSpacing:'0.2em', display:'block' }}>AI BRIEFING</span>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+
+            {/* Right side */}
+            <div className="header-right">
               {phase === 'chat' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <ProgressRing pct={progress} />
-                  <span className="font-mono" style={{ fontSize: '8px', color: 'var(--tmuted)', letterSpacing: '0.1em' }}>PROGRESSO</span>
+                <div className="prog-area">
+                  <ProgressRing pct={progress} size={42}/>
                 </div>
               )}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 12px', background: 'rgba(14,165,233,0.06)', border: '1px solid rgba(14,165,233,0.15)' }}>
-                <div style={{ width: '22px', height: '22px', background: 'rgba(14,165,233,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <span className="font-orb" style={{ fontSize: '9px', color: 'var(--blue)' }}>{user.name.charAt(0).toUpperCase()}</span>
+              {/* User chip */}
+              <div className="user-chip">
+                <div className="user-avatar">
+                  <span className="font-orb" style={{ fontSize:'9px', color:'var(--blue)' }}>{user.name.charAt(0).toUpperCase()}</span>
                 </div>
-                <span className="font-exo" style={{ fontSize: '11px', color: 'var(--text)' }}>{user.name}</span>
+                <span className="user-name font-exo">{firstName}</span>
               </div>
               {user.role === 'admin' && (
-                <Link href="/dashboard" className="btn btn-ghost btn-sm font-orb" style={{ textDecoration: 'none', display: 'inline-flex', fontSize: '9px' }}>PAINEL</Link>
+                <Link href="/dashboard" className="btn btn-ghost btn-sm font-orb header-btn" style={{ textDecoration:'none' }}>PAINEL</Link>
               )}
-              <button className="btn btn-ghost btn-sm font-orb" onClick={handleLogout} style={{ borderColor: 'rgba(239,68,68,0.3)', color: 'var(--danger)', fontSize: '9px' }}>SAIR</button>
+              <button className="btn btn-ghost btn-sm font-orb header-btn" onClick={handleLogout}
+                style={{ borderColor:'rgba(239,68,68,0.3)', color:'var(--danger)' }}>SAIR</button>
             </div>
           </div>
-          {phase === 'chat' && (
-            <div className="prog-track"><div className="prog-fill" style={{ width: `${progress}%` }} /></div>
-          )}
+          {phase === 'chat' && <div className="prog-track"><div className="prog-fill" style={{ width:`${progress}%` }}/></div>}
         </header>
 
         <AnimatePresence mode="wait">
 
-          {/* ── Loading ─────────────────────────────────────────────── */}
+          {/* ── Loading ── */}
           {phase === 'loading' && (
-            <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              style={{ minHeight: 'calc(100vh - 58px)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 1 }}>
-              <div style={{ textAlign: 'center' }}>
-                <div className="spin" style={{ width: '32px', height: '32px', margin: '0 auto 14px', borderWidth: '3px' }} />
-                <p className="font-mono" style={{ fontSize: '8px', color: 'var(--tmuted)', letterSpacing: '0.2em' }}>CARREGANDO...</p>
+            <motion.div key="loading" initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+              style={{ minHeight:'calc(100vh - var(--nav-h))', display:'flex', alignItems:'center', justifyContent:'center', position:'relative', zIndex:1 }}>
+              <div style={{ textAlign:'center' }}>
+                <div className="spin" style={{ width:'30px', height:'30px', margin:'0 auto 12px', borderWidth:'3px' }}/>
+                <p className="font-mono" style={{ fontSize:'8px', color:'var(--tmuted)', letterSpacing:'0.2em' }}>CARREGANDO...</p>
               </div>
             </motion.div>
           )}
 
-          {/* ── Hero ────────────────────────────────────────────────── */}
+          {/* ── Hero ── */}
           {phase === 'hero' && (
-            <motion.div key="hero" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
-              style={{ maxWidth: '700px', margin: '0 auto', padding: '60px 24px', position: 'relative', zIndex: 1, textAlign: 'center' }}>
+            <motion.div key="hero" initial={{ opacity:0, y:18 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-10 }}
+              className="hero-wrap">
 
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '28px' }}>
-                <div style={{ width: '76px', height: '76px', border: '1px solid rgba(6,238,245,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', boxShadow: '0 0 36px rgba(6,238,245,0.18)' }}>
-                  {[[-5, -5], [70, -5], [-5, 70], [70, 70]].map(([x, y], i) => (
-                    <div key={i} style={{ position: 'absolute', left: x, top: y, width: 10, height: 10, background: 'var(--cyan)', clipPath: 'polygon(50% 0%,100% 50%,50% 100%,0% 50%)', boxShadow: '0 0 6px var(--cyan)' }} />
+              {/* AI icon */}
+              <div style={{ display:'flex', justifyContent:'center', marginBottom:'clamp(18px,4vw,28px)' }}>
+                <div className="ai-icon">
+                  {[[-5,-5],[68,-5],[-5,68],[68,68]].map(([x,y],i)=>(
+                    <div key={i} style={{ position:'absolute', left:x, top:y, width:'clamp(8px,2.2vw,10px)', height:'clamp(8px,2.2vw,10px)', background:'var(--cyan)', clipPath:'polygon(50% 0%,100% 50%,50% 100%,0% 50%)', boxShadow:'0 0 6px var(--cyan)' }}/>
                   ))}
-                  <span className="font-orb text-cglow" style={{ fontSize: '19px', fontWeight: 900 }}>IA</span>
+                  <span className="font-orb text-cglow" style={{ fontSize:'clamp(16px,4vw,20px)', fontWeight:900 }}>IA</span>
                 </div>
               </div>
 
-              <p className="tag" style={{ justifyContent: 'center', marginBottom: '14px' }}>TM Dev — Briefing com IA</p>
-              <h1 className="font-orb" style={{ fontSize: 'clamp(1.9rem, 5vw, 3.4rem)', fontWeight: 700, lineHeight: 1.1, marginBottom: '10px' }}>
-                <span className="text-grad">OLÁ, {user.name.split(' ')[0].toUpperCase()}!</span>
-              </h1>
-              <h2 className="font-orb" style={{ fontSize: 'clamp(0.85rem, 2.2vw, 1.3rem)', color: 'var(--text)', letterSpacing: '0.08em', fontWeight: 500, marginBottom: '20px' }}>
-                DIAGNÓSTICO INTELIGENTE DO SEU NEGÓCIO
-              </h2>
-              <p className="font-exo" style={{ fontSize: '14px', color: 'var(--tmuted)', lineHeight: 1.75, maxWidth: '500px', margin: '0 auto 36px' }}>
-                Nossa IA vai conduzir uma entrevista personalizada com você, adaptando as perguntas ao seu negócio e gerando um diagnóstico completo com oportunidades de crescimento.
+              <p className="tag" style={{ justifyContent:'center', marginBottom:'12px' }}>TM Dev — Briefing com IA</p>
+              <h1 className="font-orb hero-title"><span className="text-grad">OLÁ, {firstName}!</span></h1>
+              <h2 className="font-orb hero-sub">DIAGNÓSTICO INTELIGENTE DO SEU NEGÓCIO</h2>
+              <p className="font-exo hero-desc">
+                Nossa IA conduz uma entrevista personalizada, adapta as perguntas ao seu negócio e gera um diagnóstico completo com oportunidades de crescimento.
               </p>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', maxWidth: '460px', margin: '0 auto 38px' }}>
-                {[['◈', 'Perguntas Adaptativas'], ['◆', 'Análise em Tempo Real'], ['⬡', 'Diagnóstico Completo']].map(([icon, t]) => (
-                  <div key={t} className="panel panel-hover" style={{ padding: '16px 10px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '22px', color: 'var(--cyan)', marginBottom: '8px' }}>{icon}</div>
-                    <div className="font-mono" style={{ fontSize: '7px', color: 'var(--tmuted)', letterSpacing: '0.08em' }}>{t}</div>
+              {/* Features */}
+              <div className="features-grid">
+                {[['◈','Perguntas Adaptativas'],['◆','Análise em Tempo Real'],['⬡','Diagnóstico Completo']].map(([icon,t])=>(
+                  <div key={t} className="panel panel-hover feat-card">
+                    <div style={{ fontSize:'clamp(18px,4.5vw,22px)', color:'var(--cyan)', marginBottom:'8px' }}>{icon}</div>
+                    <div className="font-mono" style={{ fontSize:'clamp(6px,1.8vw,7px)', color:'var(--tmuted)', letterSpacing:'0.08em', lineHeight:1.5 }}>{t}</div>
                   </div>
                 ))}
               </div>
 
               {/* Draft banner */}
               {existingDraft && !existingDraft.completed && (
-                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                  className="panel" style={{ padding: '18px 22px', marginBottom: '24px', maxWidth: '460px', margin: '0 auto 24px', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-                  <div style={{ flex: 1 }}>
-                    <p className="font-mono" style={{ fontSize: '8px', color: 'var(--cyan)', letterSpacing: '0.15em', marginBottom: '4px' }}>◈ RASCUNHO SALVO</p>
-                    <p className="font-exo" style={{ fontSize: '12px', color: 'var(--text)', marginBottom: '3px' }}>
-                      Você tem um briefing em andamento — {existingDraft.progress}% concluído
+                <motion.div initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }}
+                  className="panel draft-banner">
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <p className="font-mono" style={{ fontSize:'clamp(7px,1.8vw,8px)', color:'var(--cyan)', letterSpacing:'0.12em', marginBottom:'4px' }}>◈ RASCUNHO SALVO</p>
+                    <p className="font-exo" style={{ fontSize:'clamp(11px,3vw,12px)', color:'var(--text)', marginBottom:'3px' }}>
+                      Briefing em andamento — {existingDraft.progress}% concluído
                     </p>
-                    <p className="font-mono" style={{ fontSize: '8px', color: 'var(--tmuted)', letterSpacing: '0.08em' }}>
+                    <p className="font-mono" style={{ fontSize:'clamp(7px,1.8vw,8px)', color:'var(--tmuted)', letterSpacing:'0.06em' }}>
                       {new Date(existingDraft.updatedAt).toLocaleString('pt-BR')}
                     </p>
                   </div>
-                  <button className="btn btn-primary btn-sm font-orb" onClick={() => startChat(true)}>
-                    CONTINUAR →
-                  </button>
+                  <button className="btn btn-primary btn-sm font-orb" onClick={()=>startChat(true)} style={{ flexShrink:0 }}>CONTINUAR</button>
                 </motion.div>
               )}
 
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-                <button className="btn btn-primary font-orb" onClick={() => startChat(false)} style={{ padding: '15px 52px', fontSize: '11px' }}>
+              {/* CTA */}
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'10px' }}>
+                <button className="btn btn-primary font-orb hero-cta" onClick={()=>startChat(false)}>
                   <span>{existingDraft && !existingDraft.completed ? 'NOVO BRIEFING' : 'INICIAR BRIEFING →'}</span>
                 </button>
                 {existingDraft && !existingDraft.completed && (
-                  <p className="font-mono" style={{ fontSize: '8px', color: 'rgba(239,68,68,0.5)', letterSpacing: '0.1em', cursor: 'pointer' }}
-                    onClick={() => { fetch('/api/draft', { method: 'DELETE' }); setExistingDraft(null); }}>
+                  <button className="font-mono discard-btn"
+                    onClick={()=>{ fetch('/api/draft',{method:'DELETE'}); setExistingDraft(null); }}>
                     descartar rascunho
-                  </p>
+                  </button>
                 )}
               </div>
             </motion.div>
           )}
 
-          {/* ── Chat ────────────────────────────────────────────────── */}
+          {/* ── Chat ── */}
           {phase === 'chat' && (
-            <motion.div key="chat" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              style={{ maxWidth: '780px', margin: '0 auto', padding: '32px 24px 100px', position: 'relative', zIndex: 1 }}>
+            <motion.div key="chat" initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+              className="chat-wrap">
 
-              {/* History */}
+              {/* Message history */}
               {history.length > 1 && (
-                <div style={{ marginBottom: '28px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {history.slice(0, -1).map((m, i) => (
-                    <motion.div key={i} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.05 }}>
+                <div className="history">
+                  {history.slice(0,-1).map((m,i)=>(
+                    <div key={i} className={`msg-row ${m.role}`}>
                       {m.role === 'assistant' ? (
-                        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                          <div style={{ width: '28px', height: '28px', background: 'rgba(6,238,245,0.1)', border: '1px solid rgba(6,238,245,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>
-                            <span className="font-orb" style={{ fontSize: '8px', color: 'var(--cyan)' }}>IA</span>
-                          </div>
-                          <p className="font-exo" style={{ fontSize: '13px', color: 'rgba(203,213,225,0.45)', lineHeight: 1.6, paddingTop: '4px' }}>{m.content}</p>
-                        </div>
+                        <>
+                          <div className="msg-avatar ai-av"><span className="font-orb" style={{ fontSize:'7px', color:'var(--cyan)' }}>IA</span></div>
+                          <p className="font-exo msg-text ai-text">{m.content}</p>
+                        </>
                       ) : (
-                        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', justifyContent: 'flex-end' }}>
-                          <div style={{ maxWidth: '70%', padding: '9px 14px', background: 'rgba(14,165,233,0.08)', border: '1px solid rgba(14,165,233,0.2)' }}>
-                            <p className="font-exo" style={{ fontSize: '12px', color: 'rgba(203,213,225,0.6)', lineHeight: 1.5 }}>{m.content}</p>
+                        <>
+                          <div className="msg-bubble">
+                            <p className="font-exo msg-text user-text">{m.content}</p>
                           </div>
-                          <div style={{ width: '28px', height: '28px', background: 'rgba(14,165,233,0.12)', border: '1px solid rgba(14,165,233,0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>
-                            <span className="font-orb" style={{ fontSize: '9px', color: 'var(--blue)' }}>{user.name.charAt(0)}</span>
-                          </div>
-                        </div>
+                          <div className="msg-avatar user-av"><span className="font-orb" style={{ fontSize:'8px', color:'var(--blue)' }}>{user.name.charAt(0)}</span></div>
+                        </>
                       )}
-                    </motion.div>
+                    </div>
                   ))}
-                  <div className="cyber-line" style={{ margin: '8px 0' }} />
+                  <div className="cyber-line" style={{ margin:'10px 0' }}/>
                 </div>
               )}
 
-              {/* Current AI question */}
+              {/* Current question */}
               {question && (
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '28px' }}>
-                  <div style={{ width: '36px', height: '36px', background: 'rgba(6,238,245,0.1)', border: '1px solid rgba(6,238,245,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 0 12px rgba(6,238,245,0.15)' }}>
-                    <span className="font-orb text-cglow" style={{ fontSize: '9px', fontWeight: 700 }}>IA</span>
+                <div className="msg-row assistant current-q">
+                  <div className="msg-avatar ai-av active-av">
+                    <span className="font-orb text-cglow" style={{ fontSize:'7px', fontWeight:700 }}>IA</span>
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <p className="font-mono" style={{ fontSize: '7px', color: 'var(--cyan)', letterSpacing: '0.2em', marginBottom: '8px' }}>TM DEV CONSULTOR</p>
-                    <p className="font-exo" style={{ fontSize: '16px', color: 'var(--tbright)', lineHeight: 1.65, fontWeight: 400 }}>
-                      {sending && !question ? (
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <span className="spin" />
-                          <span className="font-mono" style={{ fontSize: '10px', color: 'var(--tmuted)', letterSpacing: '0.12em' }}>ANALISANDO...</span>
-                        </span>
-                      ) : (
-                        <TypingText text={question} onDone={() => setTypingDone(true)} speed={16} />
-                      )}
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <p className="font-mono" style={{ fontSize:'clamp(6px,1.6vw,7px)', color:'var(--cyan)', letterSpacing:'0.18em', marginBottom:'7px' }}>TM DEV CONSULTOR</p>
+                    <p className="font-exo" style={{ fontSize:'clamp(14px,3.8vw,16px)', color:'var(--tbright)', lineHeight:1.65, fontWeight:400 }}>
+                      <TypingText text={question} onDone={()=>setTypingDone(true)} speed={15}/>
                     </p>
                   </div>
                 </div>
               )}
 
-              {/* Thinking indicator */}
+              {/* Thinking dots */}
               {sending && !question && (
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '28px' }}>
-                  <div style={{ width: '36px', height: '36px', background: 'rgba(6,238,245,0.07)', border: '1px solid rgba(6,238,245,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <span className="font-orb text-cglow" style={{ fontSize: '9px' }}>IA</span>
-                  </div>
-                  <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
-                    {[0, 1, 2].map(i => (
-                      <div key={i} style={{ width: '7px', height: '7px', borderRadius: '50%', background: 'var(--cyan)', animation: `_dot 1.2s ease-in-out ${i * 0.2}s infinite` }} />
+                <div className="msg-row assistant">
+                  <div className="msg-avatar ai-av"><span className="font-orb" style={{ fontSize:'7px', color:'var(--cyan)' }}>IA</span></div>
+                  <div style={{ display:'flex', gap:'5px', alignItems:'center', paddingTop:'4px' }}>
+                    {[0,1,2].map(i=>(
+                      <div key={i} style={{ width:'7px', height:'7px', borderRadius:'50%', background:'var(--cyan)', animation:`_dot 1.2s ease-in-out ${i*0.2}s infinite` }}/>
                     ))}
                   </div>
                 </div>
@@ -484,80 +403,71 @@ export default function BriefingPage({ user }) {
               {/* Answer area */}
               <AnimatePresence>
                 {typingDone && !sending && options.length > 0 && (
-                  <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-                    {/* Multiple choice */}
-                    <div style={{ marginBottom: '16px' }}>
-                      <p className="flabel" style={{ marginBottom: '10px' }}>Selecione uma ou mais opções:</p>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '7px' }}>
-                        {options.map(opt => {
-                          const on = selected.includes(opt);
-                          return (
-                            <motion.div key={opt} whileTap={{ scale: 0.97 }}
-                              className={`opt ${on ? 'on' : ''}`} onClick={() => toggleOpt(opt)}
-                              style={{ padding: '11px 14px', cursor: 'pointer' }}>
-                              <span className={`chk-box ${on ? 'on' : ''}`} style={{ flexShrink: 0 }}>
-                                {on && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
-                              </span>
-                              <span style={{ fontSize: '12px' }}>{opt}</span>
-                            </motion.div>
-                          );
-                        })}
-                      </div>
+                  <motion.div initial={{ opacity:0, y:12 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }} className="answer-area">
+                    {/* Options */}
+                    <p className="flabel" style={{ marginBottom:'10px' }}>Selecione uma ou mais opções:</p>
+                    <div className="opts-grid">
+                      {options.map(opt => {
+                        const on = selected.includes(opt);
+                        return (
+                          <motion.div key={opt} whileTap={{ scale:0.97 }}
+                            className={`opt ${on?'on':''}`} onClick={()=>toggleOpt(opt)}>
+                            <span className={`chk-box ${on?'on':''}`}>
+                              {on && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                            </span>
+                            <span>{opt}</span>
+                          </motion.div>
+                        );
+                      })}
                     </div>
 
-                    {/* Free text */}
-                    <div style={{ marginBottom: '16px' }}>
-                      <p className="flabel">Ou escreva sua resposta (opcional se selecionou acima):</p>
-                      <div style={{ position: 'relative' }}>
+                    {/* Text area */}
+                    <div style={{ marginTop:'14px', marginBottom:'14px' }}>
+                      <p className="flabel">Ou escreva sua resposta:</p>
+                      <div style={{ position:'relative' }}>
                         <textarea ref={textRef} className="inp" rows={3}
-                          placeholder="Adicione detalhes ou escreva livremente aqui..."
-                          value={freeText} onChange={e => setFreeText(e.target.value)}
-                          onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) sendMessage(); }}
-                          style={{ paddingBottom: '36px' }} />
-                        <span className="font-mono" style={{ position: 'absolute', bottom: '9px', right: '12px', fontSize: '7px', color: 'var(--tmuted)', letterSpacing: '0.1em' }}>
-                          Ctrl+Enter para enviar
-                        </span>
+                          placeholder="Adicione detalhes ou escreva livremente..."
+                          value={freeText} onChange={e=>setFreeText(e.target.value)}
+                          onKeyDown={e=>{ if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)) sendMessage(); }}
+                          style={{ paddingBottom:'32px' }}/>
+                        <span className="font-mono kbd-hint">Ctrl+Enter</span>
                       </div>
                     </div>
 
-                    {/* Error */}
                     {error && (
-                      <div className="alert alert-error" style={{ marginBottom: '12px' }}>
+                      <div className="alert alert-error" style={{ marginBottom:'12px' }}>
                         <span>⚠</span><span>{error}</span>
                       </div>
                     )}
 
-                    {/* Send */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'rgba(74,222,128,0.8)', boxShadow: '0 0 5px rgba(74,222,128,0.6)', animation: '_pulse 2s ease-in-out infinite' }} />
-                        <span className="font-mono" style={{ fontSize: '8px', color: 'var(--tmuted)', letterSpacing: '0.1em' }}>
-                          {selected.length > 0 ? `${selected.length} opção(ões) selecionada(s)` : 'Selecione ou escreva para continuar'}
+                    {/* Send row */}
+                    <div className="send-row">
+                      <div style={{ display:'flex', alignItems:'center', gap:'7px', minWidth:0 }}>
+                        <div className="status-dot"/>
+                        <span className="font-mono status-txt">
+                          {selected.length > 0 ? `${selected.length} selecionada(s)` : 'Selecione ou escreva'}
                         </span>
                       </div>
-                      <button className="btn btn-primary font-orb" onClick={() => sendMessage()} disabled={!canSend}
-                        style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                      <button className="btn btn-primary font-orb" onClick={()=>sendMessage()} disabled={!canSend}>
                         {sending
-                          ? <><span className="spin" style={{ borderTopColor: '#fff', width: '14px', height: '14px' }} /><span>ENVIANDO...</span></>
+                          ? <><span className="spin" style={{ borderTopColor:'#fff', width:'14px', height:'14px' }}/><span>ENVIANDO...</span></>
                           : <span>RESPONDER →</span>}
                       </button>
                     </div>
 
-                    {/* Draft note */}
-                    <p className="font-mono" style={{ fontSize: '7px', color: 'rgba(14,165,233,0.3)', letterSpacing: '0.12em', marginTop: '12px', textAlign: 'right' }}>
-                      ◈ RASCUNHO SALVO AUTOMATICAMENTE
-                    </p>
+                    <p className="font-mono autosave-note">◈ RASCUNHO SALVO AUTOMATICAMENTE</p>
                   </motion.div>
                 )}
               </AnimatePresence>
+              <div ref={bottomRef}/>
             </motion.div>
           )}
 
-          {/* ── Diagnosis ───────────────────────────────────────────── */}
+          {/* ── Diagnosis ── */}
           {phase === 'diagnosis' && (
-            <motion.div key="diagnosis" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              style={{ position: 'relative', zIndex: 1 }}>
-              <DiagnosisView text={diagnosis} userName={user.name} onRestart={handleRestart} />
+            <motion.div key="diagnosis" initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+              style={{ position:'relative', zIndex:1 }}>
+              <DiagnosisView text={diagnosis} userName={user.name} onRestart={handleRestart}/>
             </motion.div>
           )}
 
@@ -565,12 +475,97 @@ export default function BriefingPage({ user }) {
       </div>
 
       <style>{`
+        .top-glow { position:fixed; inset:0; pointer-events:none; z-index:0; background:radial-gradient(ellipse 70% 40% at 50% 0%, rgba(14,165,233,0.07) 0%, transparent 70%); }
+        
+        /* Header */
+        .site-header { position:sticky; top:0; z-index:50; background:rgba(2,11,22,0.92); border-bottom:1px solid var(--border); backdrop-filter:blur(14px); }
+        .header-inner { max-width:820px; margin:0 auto; padding:0 clamp(10px,3vw,20px); height:var(--nav-h); display:flex; align-items:center; justify-content:space-between; gap:8px; }
+        .hlogo { width:30px; height:30px; border:1px solid rgba(6,238,245,0.45); display:flex; align-items:center; justify-content:center; box-shadow:0 0 10px rgba(6,238,245,0.12); border-radius:3px; flex-shrink:0; }
+        .hlogo-text {}
+        .header-right { display:flex; align-items:center; gap:6px; }
+        .prog-area { display:flex; align-items:center; }
+        .user-chip { display:flex; align-items:center; gap:6px; padding:4px 10px; background:rgba(14,165,233,0.06); border:1px solid rgba(14,165,233,0.15); border-radius:4px; }
+        .user-avatar { width:20px; height:20px; background:rgba(14,165,233,0.15); border-radius:3px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+        .user-name { font-size:clamp(9px,2.5vw,11px); color:var(--text); }
+        .header-btn { font-size:clamp(7px,2vw,9px) !important; padding:7px 12px !important; min-height:34px !important; }
+        
+        /* Hero */
+        .hero-wrap { max-width:640px; margin:0 auto; padding:clamp(28px,7vw,60px) clamp(12px,4vw,24px) clamp(40px,8vw,60px); position:relative; z-index:1; text-align:center; }
+        .ai-icon { width:clamp(60px,16vw,76px); height:clamp(60px,16vw,76px); border:1px solid rgba(6,238,245,0.45); display:flex; align-items:center; justify-content:center; position:relative; box-shadow:0 0 32px rgba(6,238,245,0.18); border-radius:6px; }
+        .hero-title { font-size:clamp(1.7rem,7vw,3.2rem); font-weight:700; line-height:1.1; margin-bottom:10px; }
+        .hero-sub { font-size:clamp(0.75rem,3vw,1.2rem); color:var(--text); letter-spacing:0.06em; font-weight:500; margin-bottom:16px; }
+        .hero-desc { font-size:clamp(12px,3.2vw,14px); color:var(--tmuted); line-height:1.75; max-width:480px; margin:0 auto clamp(24px,6vw,36px); }
+        .features-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:clamp(6px,2vw,10px); max-width:440px; margin:0 auto clamp(20px,5vw,32px); }
+        .feat-card { padding:clamp(12px,3vw,16px) clamp(8px,2vw,10px); text-align:center; }
+        .draft-banner { padding:clamp(14px,3.5vw,18px) clamp(14px,3.5vw,20px); margin-bottom:clamp(16px,4vw,22px); display:flex; align-items:center; gap:12px; flex-wrap:wrap; text-align:left; }
+        .hero-cta { padding:clamp(13px,3.5vw,16px) clamp(28px,8vw,52px); font-size:clamp(9px,2.5vw,11px); width:min(100%, 300px); }
+        .discard-btn { background:none; border:none; font-size:clamp(7px,2vw,8px); color:rgba(239,68,68,0.45); letter-spacing:0.1em; cursor:pointer; transition:color 0.2s; padding:4px; }
+        .discard-btn:hover { color:var(--danger); }
+        
+        /* Chat */
+        .chat-wrap { max-width:720px; margin:0 auto; padding:clamp(16px,4vw,32px) clamp(10px,3vw,20px) 100px; position:relative; z-index:1; }
+        .history { display:flex; flex-direction:column; gap:clamp(6px,2vw,10px); margin-bottom:clamp(16px,4vw,24px); }
+        .msg-row { display:flex; gap:clamp(8px,2.5vw,12px); align-items:flex-start; }
+        .msg-row.user { justify-content:flex-end; }
+        .msg-avatar { width:clamp(26px,7vw,32px); height:clamp(26px,7vw,32px); display:flex; align-items:center; justify-content:center; flex-shrink:0; border-radius:3px; margin-top:2px; }
+        .ai-av { background:rgba(6,238,245,0.08); border:1px solid rgba(6,238,245,0.2); }
+        .active-av { background:rgba(6,238,245,0.12); border-color:rgba(6,238,245,0.3); box-shadow:0 0 10px rgba(6,238,245,0.15); }
+        .user-av { background:rgba(14,165,233,0.1); border:1px solid rgba(14,165,233,0.2); }
+        .msg-text { font-size:clamp(12px,3.2vw,13px); line-height:1.65; }
+        .ai-text { color:rgba(203,213,225,0.45); padding-top:3px; }
+        .user-text { color:rgba(203,213,225,0.65); }
+        .msg-bubble { max-width:75%; padding:clamp(8px,2.5vw,10px) clamp(10px,3vw,14px); background:rgba(14,165,233,0.07); border:1px solid rgba(14,165,233,0.18); border-radius:6px 0 6px 6px; }
+        .current-q { margin-bottom:clamp(16px,4vw,24px); }
+        
+        /* Answer */
+        .answer-area { }
+        .opts-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(clamp(140px, 40vw, 200px), 1fr)); gap:clamp(5px,1.5vw,7px); }
+        .kbd-hint { position:absolute; bottom:9px; right:10px; font-size:clamp(6px,1.8vw,7px); color:var(--tmuted); letter-spacing:0.08em; pointer-events:none; }
+        .send-row { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; }
+        .status-dot { width:5px; height:5px; border-radius:50%; background:rgba(74,222,128,0.8); box-shadow:0 0 5px rgba(74,222,128,0.6); animation:_pulse 2s ease-in-out infinite; flex-shrink:0; }
+        .status-txt { font-size:clamp(7px,2vw,8px); color:var(--tmuted); letter-spacing:0.08em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .autosave-note { font-size:clamp(6px,1.8vw,7px); color:rgba(14,165,233,0.25); letter-spacing:0.1em; margin-top:10px; text-align:right; }
+        
+        /* Diagnosis */
+        .diag-wrap { max-width:800px; margin:0 auto; padding:clamp(20px,5vw,36px) clamp(12px,4vw,24px); position:relative; z-index:1; }
+        .diag-check-box { width:clamp(60px,15vw,80px); height:clamp(60px,15vw,80px); border:1px solid rgba(6,238,245,0.5); display:flex; align-items:center; justify-content:center; margin:0 auto clamp(14px,3.5vw,20px); box-shadow:0 0 28px rgba(6,238,245,0.22); border-radius:6px; }
+        .diag-grid { display:grid; gap:clamp(10px,2.5vw,14px); }
+        .diag-actions { display:flex; gap:clamp(8px,2.5vw,12px); justify-content:center; margin-top:clamp(24px,5vw,36px); flex-wrap:wrap; }
+        
         @keyframes _blink { 0%,100%{opacity:1} 50%{opacity:0} }
         @keyframes _dot { 0%,80%,100%{transform:scale(0.6);opacity:0.4} 40%{transform:scale(1);opacity:1} }
         @keyframes _pulse { 0%,100%{opacity:0.6;transform:scale(1)} 50%{opacity:1;transform:scale(1.3)} }
+        
+        /* ── 480px ── */
+        @media(max-width:480px){
+          .prog-area { display:none; }
+          .user-name { display:none; }
+          .features-grid { gap:6px; }
+          .opts-grid { grid-template-columns:1fr 1fr; }
+          .send-row { flex-direction:column; align-items:stretch; }
+          .send-row .btn { width:100%; justify-content:center; }
+          .diag-actions { flex-direction:column; align-items:center; }
+          .diag-actions .btn { width:min(100%, 280px); justify-content:center; }
+        }
+        /* ── 360px ── */
+        @media(max-width:360px){
+          .opts-grid { grid-template-columns:1fr; }
+          .features-grid { grid-template-columns:1fr; max-width:240px; }
+          .draft-banner { flex-direction:column; align-items:flex-start; gap:10px; }
+          .user-chip { padding:4px 7px; }
+          .header-btn { display:none !important; }
+        }
+        /* ── 280px ── */
+        @media(max-width:280px){
+          .hlogo-text { display:none; }
+          .chat-wrap, .hero-wrap { padding-left:8px; padding-right:8px; }
+          .header-inner { padding:0 8px; }
+          .msg-avatar { width:22px; height:22px; }
+        }
+        
         @media print {
-          header, button, .btn { display: none !important; }
-          body { background: white !important; color: black !important; }
+          .site-header, .btn, .discard-btn, .answer-area, .send-row { display:none !important; }
+          body { background:white !important; color:black !important; }
         }
       `}</style>
     </>
