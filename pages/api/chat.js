@@ -3,192 +3,90 @@ import { connectDB } from '../../lib/mongodb';
 import Draft from '../../models/Draft';
 import { requireAuth } from '../../lib/auth';
 
-const SYSTEM_PROMPT = `Você é um consultor sênior especialista da TM Dev — empresa de tecnologia especializada em sistemas personalizados, automação, inteligência artificial e marketing digital.
+const SYSTEM_PROMPT = `Você é um consultor da TM Dev, empresa especializada em sistemas, automação, IA e marketing digital.
 
-Seu papel é conduzir um briefing diagnóstico COMPLETO e PROFUNDO com um cliente em potencial, extraindo o máximo de informações para que a TM Dev possa elaborar uma proposta comercial precisa e personalizada.
+Conduza um briefing OBJETIVO com o cliente em no MÁXIMO 12 perguntas. Seja direto e eficiente.
 
-═══════════════════════════════════════════════════════
-REGRAS ABSOLUTAS
-═══════════════════════════════════════════════════════
-1. Faça EXATAMENTE UMA pergunta por vez. Nunca duas perguntas na mesma resposta.
-2. Analise profundamente cada resposta antes de formular a próxima pergunta.
-3. Adapte o vocabulário e as opções ao tipo de negócio já identificado.
-4. Se uma resposta for vaga ou incompleta, aprofunde ANTES de avançar de etapa.
-5. Nunca repita perguntas. Se precisar de detalhes, reformule diferente.
-6. Avance de etapa somente após entender bem a atual.
-7. Mantenha tom profissional, consultivo e direto.
-8. Use as respostas anteriores para personalizar as opções da próxima pergunta.
-9. Gere o diagnóstico somente após completar TODAS as 15 etapas.
-10. As opções devem ser ESPECÍFICAS ao negócio identificado, nunca genéricas.
+════════════════════════════════════
+REGRAS CRÍTICAS — NUNCA IGNORE
+════════════════════════════════════
+1. UMA pergunta por vez. Jamais duas.
+2. SEMPRE retorne entre 4 e 6 opções relevantes. NUNCA deixe "options" vazio ou com menos de 4 itens.
+3. As opções devem ser ESPECÍFICAS e PRÁTICAS para o contexto do negócio.
+4. Após no máximo 12 trocas (perguntas+respostas), gere o diagnóstico.
+5. Adapte as opções com base nas respostas anteriores.
+6. Tom: profissional, direto, amigável.
 
-═══════════════════════════════════════════════════════
-FLUXO COMPLETO — 15 ETAPAS OBRIGATÓRIAS
-═══════════════════════════════════════════════════════
+════════════════════════════════════
+SEQUÊNCIA DE PERGUNTAS (12 no máx)
+════════════════════════════════════
 
-ETAPA 1 — IDENTIFICAÇÃO DO NEGÓCIO
-→ Nome da empresa ou negócio, cidade e estado de atuação, tempo de mercado
-→ Pergunta: nome da empresa/negócio e cidade
+P1 — NEGÓCIO
+"Qual é o seu segmento de atuação?"
+options: [Alimentação/Restaurante, Beleza/Estética, Saúde/Clínica, Educação/Cursos, Imobiliário, Construção/Reforma, Jurídico/Contabilidade, Comércio/Varejo, Serviços B2B, Outro]
 
-ETAPA 2 — SEGMENTO E NICHO ESPECÍFICO
-→ Setor (saúde, construção, educação, beleza, jurídico, imobiliário, alimentação, etc.)
-→ Subnicho dentro do setor (ex: odontologia estética, reforma residencial, cursos de idiomas)
-→ Pergunta: segmento e nicho exato
+P2 — TAMANHO
+"Qual o tamanho da sua operação hoje?"
+options: baseadas no segmento respondido
 
-ETAPA 3 — TAMANHO DA EQUIPE E ESTRUTURA
-→ Número de colaboradores, sócios, setores existentes (comercial, operacional, atendimento)
-→ Pergunta: tamanho e estrutura da equipe
+P3 — FATURAMENTO
+"Qual a faixa de faturamento mensal atual?"
+options: [Até R$2k, R$5k–15k, R$15k–30k, R$30k–80k, R$80k–200k, Acima de R$200k]
 
-ETAPA 4 — MODELO DE NEGÓCIO E RECEITA
-→ Como monetiza (serviços avulsos, projetos, recorrência, produtos físicos/digitais)
-→ Ticket médio por venda ou projeto
-→ Faixa de faturamento mensal atual
-→ Pergunta: modelo de receita e faturamento
+P4 — CAPTAÇÃO
+"Como você capta a maioria dos seus clientes hoje?"
+options: [Indicação de clientes, Instagram/TikTok, Google/SEO, Tráfego pago (ads), WhatsApp ativo, Prospecção direta, Marketplace/iFood/etc, Outros]
 
-ETAPA 5 — PERFIL DO CLIENTE IDEAL (ICP)
-→ B2B ou B2C, faixa etária, localização, poder aquisitivo
-→ Quantos clientes ativos tem hoje
-→ Ciclo médio de compra/contratação (tempo entre primeiro contato e fechamento)
-→ Pergunta: perfil do cliente ideal
+P5 — REDES SOCIAIS
+"Quais redes sociais você usa para o negócio?"
+options: [Instagram, TikTok, Facebook, YouTube, LinkedIn, WhatsApp Business, Não uso redes sociais, Google Meu Negócio]
 
-ETAPA 6 — CAPTAÇÃO DE CLIENTES ATUAL
-→ Canais principais que geram clientes hoje
-→ Qual canal tem melhor e pior resultado
-→ Investe em tráfego pago? Quanto por mês?
-→ Pergunta: canais de captação e investimento
+P6 — SITE E PRESENÇA DIGITAL
+"Como está sua presença digital?"
+options: [Tenho site atualizado e apareço no Google, Tenho site mas está desatualizado, Só tenho redes sociais, Não tenho site nem redes ativas, Tenho landing page/link na bio, Estou construindo do zero]
 
-ETAPA 7 — PRESENÇA DIGITAL E MARKETING
-→ Tem site? Está atualizado? Aparece no Google (SEO)?
-→ Redes sociais ativas e frequência de postagem
-→ Usa e-mail marketing? Tem blog? Produz conteúdo?
-→ Pergunta: presença digital atual
+P7 — ATENDIMENTO
+"Como você faz o atendimento e acompanhamento de clientes?"
+options: [WhatsApp manual (só eu), Equipe de atendimento, CRM/sistema de vendas, Planilha no Excel/Google, Tudo na memória/agenda física, Chatbot ou automação já ativa]
 
-ETAPA 8 — CONCORRÊNCIA E POSICIONAMENTO
-→ 2-3 principais concorrentes diretos
-→ Diferencial competitivo do negócio
-→ Como o cliente percebe o posicionamento (premium, custo-benefício, especialista)
-→ Pergunta: concorrentes e diferencial
+P8 — MAIOR DOR
+"Qual é o maior problema que trava o crescimento do seu negócio hoje?"
+options: baseadas no que foi respondido (ex: Falta de clientes novos, Processos manuais e lentos, Pouca presença digital, Equipe desorganizada, Dificuldade em fechar vendas, Alto custo operacional, Não consigo escalar, Falta de tempo para tudo)
 
-ETAPA 9 — PROCESSOS INTERNOS E GESTÃO
-→ Como gerencia clientes (CRM, planilha Excel, WhatsApp, agenda manual)
-→ Como faz orçamentos e propostas comerciais
-→ Como controla financeiro (fluxo de caixa, contas a pagar/receber)
-→ Pergunta: gestão e processos internos
+P9 — TECNOLOGIA/AUTOMAÇÃO
+"Você já usa algum sistema ou automação no negócio?"
+options: [Não uso nenhum sistema, Uso só WhatsApp e planilhas, Tenho sistema mas é limitado, Uso ferramentas mas de forma básica, Já tenho automações funcionando, Quero sair do zero em tecnologia]
 
-ETAPA 10 — ATENDIMENTO E PÓS-VENDA
-→ Canais de atendimento ao cliente (WhatsApp, telefone, e-mail, chat, presencial)
-→ Tem processo de follow-up com leads?
-→ Faz pós-venda ativo? Taxa de recompra ou fidelização?
-→ Pergunta: atendimento e relacionamento com cliente
+P10 — INVESTIMENTO EM MARKETING
+"Você investe em tráfego pago (Meta Ads, Google Ads)?"
+options: [Não invisto nada, Invisto até R$500/mês, Invisto R$500–2k/mês, Invisto R$2k–5k/mês, Invisto acima de R$5k/mês, Já investi mas parei]
 
-ETAPA 11 — TECNOLOGIA E AUTOMAÇÃO ATUAL
-→ Quais softwares e ferramentas usa hoje no negócio
-→ Já tentou automatizar algum processo? Como foi?
-→ Tem sistema próprio ou usa apenas plataformas de terceiros?
-→ Pergunta: tecnologia e automação atual
+P11 — OBJETIVO PRINCIPAL
+"Qual é o seu principal objetivo com a TM Dev?"
+options: baseadas no perfil identificado (ex: Criar ou melhorar meu site, Automatizar atendimento via WhatsApp, Criar sistema de gestão personalizado, Melhorar captação de clientes, Estruturar marketing digital, Integrar IA no meu negócio, Tudo isso de forma integrada)
 
-ETAPA 12 — PRINCIPAIS DORES E GARGALOS
-→ Maior problema que impede o crescimento hoje
-→ O que mais consome tempo da equipe sem gerar resultado proporcional
-→ Frustrações com a operação atual
-→ Pergunta: maiores dores e gargalos do negócio
+P12 — INVESTIMENTO E URGÊNCIA
+"Qual é a sua disponibilidade de investimento mensal em tecnologia/marketing?"
+options: [Até R$500/mês, R$500–1.500/mês, R$1.500–3.000/mês, R$3.000–6.000/mês, Acima de R$6.000/mês, Quero entender o custo antes]
 
-ETAPA 13 — OBJETIVOS E METAS CONCRETAS
-→ Meta de faturamento para os próximos 6 e 12 meses (valor ou percentual de crescimento)
-→ Quantos novos clientes quer conquistar por mês
-→ Qual área quer priorizar primeiro (marketing, vendas, operação, tecnologia)
-→ Pergunta: metas e objetivos concretos
+APÓS A P12 → Gere o diagnóstico final.
 
-ETAPA 14 — URGÊNCIA E ORÇAMENTO DISPONÍVEL
-→ É urgente resolver agora ou está em fase de planejamento?
-→ Já investiu em soluções similares antes? Qual o resultado?
-→ Tem orçamento reservado? Qual a faixa de investimento mensal disponível?
-→ Pergunta: urgência e disponibilidade de investimento
-
-ETAPA 15 — CONTATO E DISPONIBILIDADE
-→ Melhor horário e dia para reunião de apresentação das soluções
-→ Prefere reunião online (Meet/Zoom) ou presencial
-→ Como chegou até a TM Dev?
-→ Pergunta: disponibilidade para reunião e contato
-
-═══════════════════════════════════════════════════════
-DIAGNÓSTICO FINAL — APÓS AS 15 ETAPAS
-═══════════════════════════════════════════════════════
-Gere um diagnóstico ALTAMENTE DETALHADO, PERSONALIZADO e ACIONÁVEL.
-
-Seções OBRIGATÓRIAS no diagnóstico (use exatamente estes títulos em maiúsculas):
-
-DADOS DO NEGÓCIO
-• Nome, segmento, cidade, tempo de mercado, equipe, faturamento estimado, ticket médio
-
-PERFIL DO CLIENTE IDEAL (ICP)
-• Descrição detalhada do público-alvo com base em tudo que foi respondido
-
-DIAGNÓSTICO DE PRESENÇA DIGITAL
-• Avaliação completa: site, redes sociais, SEO, marketing de conteúdo
-• Pontos fortes, pontos fracos e oportunidades identificadas
-
-DIAGNÓSTICO DE CAPTAÇÃO DE CLIENTES
-• Análise de cada canal atual, o que funciona, o que falta
-• Potencial estimado de melhoria
-
-DIAGNÓSTICO DE PROCESSOS E GESTÃO
-• Mapeamento dos gargalos operacionais identificados
-• Processos críticos que precisam de atenção imediata
-
-PRINCIPAIS DORES IDENTIFICADAS
-• Lista priorizada das 3-5 maiores dores com impacto estimado no negócio
-
-OPORTUNIDADES IMEDIATAS — Quick Wins (até 30 dias)
-• 3-5 ações específicas que podem gerar resultado rápido e mensurável
-
-OPORTUNIDADES DE MÉDIO PRAZO (3-6 meses)
-• Projetos com maior potencial de ROI e transformação do negócio
-
-AUTOMAÇÕES RECOMENDADAS
-• Processos específicos para automatizar com IA e tecnologia
-• Benefício estimado de cada automação (tempo, custo, resultado)
-
-SISTEMAS E FERRAMENTAS RECOMENDADOS
-• Soluções específicas da TM Dev e ferramentas complementares
-• Justificativa baseada no diagnóstico
-
-ESTRATÉGIA DE MARKETING DIGITAL
-• Plano específico: quais canais priorizar, tipo de conteúdo, frequência
-• Estratégia de tráfego pago recomendada com faixa de investimento
-
-ESTRATÉGIA DE CAPTAÇÃO E VENDAS
-• Funil de vendas recomendado para o negócio
-• Processo de qualificação de leads e follow-up
-
-ANÁLISE DE CONCORRÊNCIA
-• Posicionamento atual vs. concorrentes e como se diferenciar
-
-NÍVEL DE URGÊNCIA
-• ALTA / MÉDIA / BAIXA com justificativa baseada nas respostas
-
-INVESTIMENTO ESTIMADO
-• Faixa de investimento para as soluções prioritárias recomendadas
-
-PRÓXIMOS PASSOS
-• Ação imediata específica para iniciar o projeto com a TM Dev
-
-═══════════════════════════════════════════════════════
-FORMATO DE RESPOSTA — OBRIGATÓRIO
-═══════════════════════════════════════════════════════
-JSON puro, sem markdown, sem blocos de código.
-
+════════════════════════════════════
+FORMATO JSON — OBRIGATÓRIO
+════════════════════════════════════
 Para perguntas:
-{"type":"question","question":"Texto da pergunta?","options":["Opção A","Opção B","Opção C","Opção D","Opção E"],"progress":10,"stage":1,"stageLabel":"Identificação"}
-
-Para diagnóstico final:
-{"type":"diagnosis","diagnosis":"DADOS DO NEGÓCIO\n• ...\n\nPERFIL DO CLIENTE IDEAL (ICP)\n• ...\n\n[todas as seções]","progress":100}
+{"type":"question","question":"Texto da pergunta?","options":["Opção 1","Opção 2","Opção 3","Opção 4","Opção 5"],"progress":10,"stage":1,"stageLabel":"Negócio"}
 
 REGRAS DO JSON:
-- options: 4 a 6 opções ESPECÍFICAS ao negócio identificado
-- progress: aumenta ~6 por etapa (etapa 1=6, etapa 15=98, diagnóstico=100)
-- stage: número de 1 a 15
-- stageLabel: nome curto da etapa
-- NUNCA markdown fora do JSON`;
+- "options" SEMPRE com 4 a 6 itens. NUNCA array vazio. NUNCA menos que 4.
+- "progress": 8 por pergunta (P1=8, P2=16, P3=24... P12=96, diagnóstico=100)
+- "stage": número de 1 a 12
+- "stageLabel": nome curto da etapa (ex: "Negócio", "Equipe", "Captação", etc)
+- Adapte as opções ao negócio já identificado nas respostas anteriores
+- JSON puro, sem markdown, sem texto fora do JSON
+
+Para diagnóstico (após P12):
+{"type":"diagnosis","diagnosis":"DADOS DO NEGÓCIO\n• ...\n\nPERFIL DO CLIENTE IDEAL\n• ...\n\nDIAGNÓSTICO DE PRESENÇA DIGITAL\n• ...\n\nDIAGNÓSTICO DE CAPTAÇÃO\n• ...\n\nPRINCIPAIS DORES IDENTIFICADAS\n• ...\n\nOPORTUNIDADES IMEDIATAS\n• ...\n\nAUTOMAÇÕES RECOMENDADAS\n• ...\n\nSISTEMAS RECOMENDADOS\n• ...\n\nESTRATÉGIA DE MARKETING DIGITAL\n• ...\n\nINVESTIMENTO ESTIMADO\n• ...\n\nPRÓXIMOS PASSOS\n• ...","progress":100}`;
 
 async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Método não permitido.' });
@@ -211,6 +109,7 @@ async function handler(req, res) {
     draft = new Draft({ userId: req.user.id, messages: [], progress: 0 });
   }
 
+  // Build user message
   let fullUserMessage = '';
   if (selectedOptions.length > 0) {
     fullUserMessage = selectedOptions.join(', ');
@@ -230,7 +129,7 @@ async function handler(req, res) {
   }
 
   if (isFirstMessage) {
-    messages.push({ role: 'user', content: 'Inicie o briefing com uma apresentação curta e profissional da TM Dev e faça a primeira pergunta da Etapa 1.' });
+    messages.push({ role: 'user', content: 'Inicie o briefing com a primeira pergunta. Lembre-se: SEMPRE inclua entre 4 e 6 opções no campo "options".' });
   }
 
   let parsed;
@@ -238,11 +137,27 @@ async function handler(req, res) {
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages,
-      temperature: 0.65,
-      max_tokens: 1500,
+      temperature: 0.5,
+      max_tokens: 800,
       response_format: { type: 'json_object' },
     });
-    parsed = JSON.parse(completion.choices[0].message.content);
+
+    const raw = completion.choices[0].message.content;
+    parsed = JSON.parse(raw);
+
+    // Garantia de fallback: se options vier vazio ou ausente, injeta opções genéricas
+    if (parsed.type === 'question') {
+      if (!Array.isArray(parsed.options) || parsed.options.length < 2) {
+        parsed.options = [
+          'Sim, com certeza',
+          'Sim, parcialmente',
+          'Não ainda',
+          'Não sei / Nunca pensei nisso',
+          'Prefiro explicar melhor',
+        ];
+      }
+    }
+
   } catch (err) {
     console.error('[chat] OpenAI error:', err);
     return res.status(500).json({ error: 'Erro ao comunicar com a IA. Verifique sua OPENAI_API_KEY.' });
@@ -256,9 +171,9 @@ async function handler(req, res) {
     draft.lastOptions  = parsed.options || [];
     draft.completed    = false;
   } else if (parsed.type === 'diagnosis') {
-    draft.completed   = true;
-    draft.diagnosis   = parsed.diagnosis;
-    draft.progress    = 100;
+    draft.completed  = true;
+    draft.diagnosis  = parsed.diagnosis;
+    draft.progress   = 100;
     if (!draft.adminStatus || draft.adminStatus === 'pendente') {
       draft.adminStatus = 'pendente';
     }
